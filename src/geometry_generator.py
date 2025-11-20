@@ -282,8 +282,8 @@ class GeometryGenerator:
             rep_y = closest_divisor(res_y, i)
             noise += (
                 generate_perlin_noise_2d((res_y, res_x), (rep_y, rep_x), (False, True))
-                * 0.06
-                * ((coeffs[-1] + 1) - i)
+                * 0.05
+                * ((coeffs[-1] + 2) - i)
             )
         # crop noise
         noise = noise[0 : self.n_slices, 0:res_x]
