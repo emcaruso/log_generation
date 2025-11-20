@@ -3,13 +3,14 @@ import cv2
 import pyvista as pv
 import numpy as np
 from visualizer import Visualizer
+import time
 
 
 def main():
 
     resolution = 500
     n_slices = 500
-    show = True
+    show = False
 
     # volume generator
     vol_gen = VolumeGenerator(
@@ -22,7 +23,10 @@ def main():
     print("Generating volume...")
 
     # generate random volume
+    t1 = time.time()
     volume = vol_gen.generate_volume()
+
+    print("Volume generated in {:.2f} seconds".format(time.time() - t1))
 
     # visualize the log
     try:

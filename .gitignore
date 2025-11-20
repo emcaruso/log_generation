@@ -131,3 +131,5 @@ dmypy.json
 refactored_for_numpy/*
 
 gibboni/*
+data/tree_geo_random/*
+data/wood_color_maps_random/*
