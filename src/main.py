@@ -25,7 +25,7 @@ def main():
     volume = vol_gen.generate_volume()
 
     # visualize the log
-    if False
+    if False:
         vol = volume[:1000, ...]
         vis = Visualizer(vol)
         vis.show()
