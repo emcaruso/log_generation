@@ -12,9 +12,9 @@ class RandomWalkGenerator:
         p_max,
         p0,
         dt: float = 1.0,
-        accel_sigma=0.65,
+        accel_sigma=0.55,
         vel_memory=0.95,
-        vmax=3.0,
+        vmax=2.0,
     ):
         self.n_steps = n_steps
         self.p0 = p0

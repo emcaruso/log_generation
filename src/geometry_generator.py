@@ -239,7 +239,7 @@ class GeometryGenerator:
         radius_min: int = 104,
         radius_max: int = 143,
         n_slices: int = 300,
-        n_knots: int = 200,
+        n_knots: int = 100,
         perlin_density: int = 5,
         gmm_model: str = "aic",  # "bic", "aic" or "single"
         minimal_save: bool = False,
@@ -276,14 +276,16 @@ class GeometryGenerator:
         # noise = generate_perlin_noise_2d((res_y, res_x), (mul, mul ), (False, True))
         # multiscale noise  HARDCODED !!!
         noise = np.zeros((res_y, res_x))
-        coeffs = [1, 2, 4, 6, 8]
+        coeffs = [1, 10]
+        decay = 0.85
+        coeff = 0.8
         for i in coeffs:
             rep_x = closest_divisor(res_x, i)
-            rep_y = closest_divisor(res_y, i)
+            rep_y = closest_divisor(res_y, int(i * 0.3))
             noise += (
                 generate_perlin_noise_2d((res_y, res_x), (rep_y, rep_x), (False, True))
-                * 0.05
-                * ((coeffs[-1] + 2) - i)
+                * decay ** (i)
+                * coeff
             )
         # crop noise
         noise = noise[0 : self.n_slices, 0:res_x]

@@ -10,7 +10,7 @@ def main():
 
     resolution = 500
     n_slices = 500
-    show = False
+    show = True
 
     # volume generator
     vol_gen = VolumeGenerator(
@@ -35,14 +35,16 @@ def main():
     except Exception as e:
         print("Visualization failed: ", e)
 
-    # show slices
-    for i in range(n_slices):
-        cv2.imshow("slice", volume[i])
-        key = cv2.waitKey(0)
-        if key == ord("l"):
-            break
-        if key == ord("q"):
-            exit(1)
+    # # show slices
+    # for i in range(n_slices):
+    #     cv2.imshow("slice", volume[i])
+    #     key = cv2.waitKey(0)
+    #     if key == ord("l"):
+    #         break
+    #     if key == ord("q"):
+    #         exit(1)
+    #
+    #
 
 
 if __name__ == "__main__":
