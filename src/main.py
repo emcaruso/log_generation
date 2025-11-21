@@ -1,11 +1,10 @@
 from volume_generator import VolumeGenerator
 import cv2
-import pyvista as pv
-import numpy as np
-from visualizer import Visualizer
 import time
 from omegaconf import OmegaConf
 from pathlib import Path
+import numpy as np
+from tiff import volume_to_tiff
 
 
 def main():
@@ -17,6 +16,9 @@ def main():
     # volume generator
     vol_gen = VolumeGenerator(cfg=cfg)
 
+    # set seed of numpy
+    np.random.seed(cfg.seed)
+
     print("Generating volume...")
 
     # generate random volume
@@ -24,6 +26,11 @@ def main():
     volume = vol_gen.generate_volume()
 
     print("Volume generated in {:.2f} seconds".format(time.time() - t1))
+
+    volume_to_tiff(
+        volume,
+        str(Path(__file__).parent.parent / "data" / "tiffs" / "generated_volume.tiff"),
+    )
 
     # # visualize the log
     # try:

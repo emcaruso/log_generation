@@ -248,19 +248,18 @@ class VolumeGenerator:
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view)
 
         # Seed
-        seed = 42
         seed_loc = glGetUniformLocation(shader, "randomSeed")
-        glUniform1i(seed_loc, seed)
+        glUniform1i(seed_loc, self.cfg.seed)
 
         ### DRAW ###################################################################
 
         glClearColor(1.0, 1.0, 1.0, 1.0)
         glEnable(GL_DEPTH_TEST)
 
-        volume = []
-        # volume = np.zeros((self.height, self.width, 1, self.n_slices), dtype=np.uint8)
+        # volume = []
         # while not glfw.window_should_close(self.window):
         n_slices = int(self.cfg.geometry.log_length / self.cfg.geometry.slice_size)
+        volume = np.zeros((self.height, self.width, 3, n_slices), dtype=np.uint8)
         for time_idx in tqdm(
             range(0, n_slices),
             desc="Generating volume slices",
@@ -295,8 +294,8 @@ class VolumeGenerator:
 
             img = np.flipud(img)
 
-            volume.append(img)
-            # volume[:, :, 0, time_idx] = img[:, :, 0]
+            # volume.append(img)
+            volume[:, :, 0, time_idx] = img[:, :, 0]
 
             if self.cfg.show:
                 cv2.imshow("Rendered Image", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
@@ -305,7 +304,7 @@ class VolumeGenerator:
         # import ipdb
         #
         # ipdb.set_trace()
-        volume = np.stack(volume, axis=-1)
+        # volume = np.stack(volume, axis=-1)
         cv2.destroyAllWindows()
         glfw.terminate()
 
