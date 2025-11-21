@@ -4,21 +4,18 @@ import pyvista as pv
 import numpy as np
 from visualizer import Visualizer
 import time
+from omegaconf import OmegaConf
+from pathlib import Path
 
 
 def main():
 
-    resolution = 500
-    n_slices = 500
-    show = True
+    # load yaml with omegaconf
+    path = Path(__file__).parent.parent / "configs" / "log_generation.yaml"
+    cfg = OmegaConf.load(path)
 
     # volume generator
-    vol_gen = VolumeGenerator(
-        resolution=resolution,
-        n_slices=n_slices,
-        show=show,
-        random=True,
-    )
+    vol_gen = VolumeGenerator(cfg=cfg)
 
     print("Generating volume...")
 
@@ -28,23 +25,21 @@ def main():
 
     print("Volume generated in {:.2f} seconds".format(time.time() - t1))
 
-    # visualize the log
-    try:
-        vis = Visualizer(volume)
-        vis.show()
-    except Exception as e:
-        print("Visualization failed: ", e)
+    # # visualize the log
+    # try:
+    #     vis = Visualizer(volume)
+    #     vis.show()
+    # except Exception as e:
+    #     print("Visualization failed: ", e)
 
-    # # show slices
-    # for i in range(n_slices):
-    #     cv2.imshow("slice", volume[i])
-    #     key = cv2.waitKey(0)
-    #     if key == ord("l"):
-    #         break
-    #     if key == ord("q"):
-    #         exit(1)
-    #
-    #
+    # show slices
+    for i in range(volume.shape[0]):
+        cv2.imshow("slice", volume[i])
+        key = cv2.waitKey(0)
+        if key == ord("l"):
+            break
+        if key == ord("q"):
+            exit(1)
 
 
 if __name__ == "__main__":

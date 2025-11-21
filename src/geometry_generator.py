@@ -7,6 +7,7 @@ from PIL import Image, ImageFilter
 import json
 from perlin_numpy import generate_perlin_noise_2d
 from random_walk import RandomWalkGenerator, plot_trajectory
+from omegaconf import DictConfig
 
 
 def flatten(t):
@@ -14,7 +15,7 @@ def flatten(t):
 
 
 def mapFromTo(x, a, b, c, d):
-    y = (x - a) / (b - a) * (d - c) + c
+    y = (x - a) / ((b - a) + 1e-12) * (d - c) + c
     return y
 
 
@@ -78,6 +79,7 @@ def load_and_save_pith_and_outer_shape(
     f.close()
 
     # image
+    pith_and_rads = np.nan_to_num(pith_and_rads)
     img = Image.fromarray(np.uint8(pith_and_rads), "RGB")
     img = img.resize((180, znum))
     img.save(filename)
@@ -233,32 +235,16 @@ def farthest_point_sampling(points, k):
 
 class GeometryGenerator:
 
-    def __init__(
-        self,
-        random: bool = False,
-        radius_min: int = 104,
-        radius_max: int = 143,
-        n_slices: int = 300,
-        n_knots: int = 100,
-        perlin_density: int = 5,
-        gmm_model: str = "aic",  # "bic", "aic" or "single"
-        minimal_save: bool = False,
-    ):
-        self.random = random
-        self.radius_min = radius_min
-        self.radius_max = radius_max
-        self.n_slices = n_slices
-        self.n_knots = n_knots
-        self.perlin_density = perlin_density
-        self.minimal_save = minimal_save
-        self.gmm_model = gmm_model
+    def __init__(self, cfg: DictConfig):
+
+        self.cfg = cfg
         self.src_dir = os.path.dirname(os.path.abspath(__file__))
         self.data_dir = os.path.abspath(os.path.join(self.src_dir, "..", "data"))
         self.configs_dir = os.path.abspath(os.path.join(self.src_dir, "..", "configs"))
         self.statistics_dir = os.path.abspath(
             os.path.join(self.data_dir, "tree_statistics")
         )
-        if self.random:
+        if self.cfg.random:
             ext = "random"
         else:
             ext = "original"
@@ -266,11 +252,11 @@ class GeometryGenerator:
             os.path.join(self.data_dir, f"tree_geo_{ext}")
         )
 
-    def generate_geo_metadata(self):
+    def generate_geo_metadata(self, end: float):
 
         ####### RADII GENERATION ##############
         # for radii, generate perlin noise
-        ratio = int(self.n_slices / 360) + 1
+        ratio = int(self.cfg.log_length / 360) + 1
         res_x = 360
         res_y = res_x * ratio
         # noise = generate_perlin_noise_2d((res_y, res_x), (mul, mul ), (False, True))
@@ -288,19 +274,26 @@ class GeometryGenerator:
                 * coeff
             )
         # crop noise
-        noise = noise[0 : self.n_slices, 0:res_x]
+        noise = noise[0 : self.cfg.log_length, :]
+        noise = (noise - noise.min()) / (noise.max() - noise.min())
 
         # # normalize noise
         # noise = (noise - min) / (max - min)
 
-        if not self.minimal_save:
+        if not self.cfg.minimal_save:
             # save img
-            Image.fromarray(
-                np.uint8((noise - noise.min() / (noise.max() - noise.min())) * 255)
-            ).save(os.path.join(self.tree_geo_dir, "perlin_noise.bmp"))
+            Image.fromarray(np.uint8(noise * 255)).save(
+                os.path.join(self.tree_geo_dir, "perlin_noise.bmp")
+            )
 
         # save radii json ( noise as list of lists [n_slices, 360])
-        radii = noise * (self.radius_max - self.radius_min) + self.radius_min
+        min = end * self.cfg.resolution
+        deformation_strength = np.random.uniform(
+            self.cfg.deformation_strength_range[0],
+            self.cfg.deformation_strength_range[1],
+        )
+        max = min + min * deformation_strength
+        radii = noise * (max - min) + min
         radii_list = radii.tolist()
         with open(os.path.join(self.tree_geo_dir, "geo_radii.json"), "w") as f:
             json.dump(radii_list, f)
@@ -308,19 +301,22 @@ class GeometryGenerator:
         ####### KNOTS GENERATION ##############
 
         knots_list = []
+        n_knots = int(
+            np.random.uniform(self.cfg.n_knots_range[0], self.cfg.n_knots_range[1])
+        )
         for i in range(0, 9):
             # load gmm model
             gmm_path = os.path.join(
-                self.statistics_dir, "gmm_models", f"{self.gmm_model}_dim{i+1}.pkl"
+                self.statistics_dir, "gmm_models", f"{self.cfg.gmm_model}_dim{i+1}.pkl"
             )
             with open(gmm_path, "rb") as f:
                 gmm = joblib.load(f)
                 # sample n_knots values
-                values = gmm.sample(self.n_knots * 20)[0].squeeze()
+                values = gmm.sample(n_knots * 20)[0].squeeze()
                 knots_list.append(values.tolist())
 
         samples = np.array(knots_list).T
-        selected_indices = farthest_point_sampling(samples, self.n_knots)
+        selected_indices = farthest_point_sampling(samples, n_knots)
         knots_list = samples[selected_indices].T
         knots_list = knots_list.tolist()
 
@@ -336,33 +332,37 @@ class GeometryGenerator:
         stats = json.load(open(stats_path))
         min_p = stats["geo_pith"]["min"]
         max_p = stats["geo_pith"]["max"]
-        n_steps = self.n_slices
         mean_p = stats["geo_pith"]["mean"]
         std_p = stats["geo_pith"]["std"]
         p0_x = np.random.normal(mean_p[0], std_p[0])
         p0_y = np.random.normal(mean_p[1], std_p[1])
         p0 = np.array([p0_x, p0_y])
+        p0 = np.zeros(2)
+        min_p = [-10, -10, 0]
+        max_p = [10, 10, 0]
 
-        self.random_walk_generator = RandomWalkGenerator(n_steps, min_p, max_p, p0)
+        self.random_walk_generator = RandomWalkGenerator(
+            self.cfg.random_walk, min_p, max_p, p0
+        )
         pith_trajectory = self.random_walk_generator.get_trajectory()
 
         # save trajectory image
-        if not self.minimal_save:
+        if not self.cfg.minimal_save:
             plot_trajectory(
                 pith_trajectory, os.path.join(self.tree_geo_dir, "pith_trajectory.png")
             )
 
-        z = np.array([i for i in range(0, self.n_slices * 10, 10)])[..., None]
+        z = np.array([i for i in range(0, self.cfg.log_length * 10, 10)])[..., None]
         traj = np.concatenate([pith_trajectory, z], axis=1)
 
-        # save json (list of lists [n_slices, 3])
+        # save json
         with open(os.path.join(self.tree_geo_dir, "geo_pith.json"), "w") as f:
             json.dump(traj.tolist(), f)
 
-    def generate_geometry(self):
+    def generate_geometry(self, end: float):
 
-        if self.random:
-            self.generate_geo_metadata()
+        if self.cfg.random:
+            self.generate_geo_metadata(end)
 
         # generated geometry files
         pith_path = os.path.join(self.tree_geo_dir, "geo_pith.json")

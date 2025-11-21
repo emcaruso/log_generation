@@ -1,0 +1,41 @@
+show: True
+random: True
+minimal_save: False
+
+rendering:
+  resolution: 730
+
+geometry:
+  slice_size: 1 # cm
+  log_length: 400 # cm
+  deformation_strength_range: [0.2, 0.4] # strength of deformation of the radius
+  n_knots_range: [100, 200] # number of knots
+  gmm_model: "aic" # "bic", "aic" or "single"
+  minimal_save: ${minimal_save}
+  resolution: ${rendering.resolution}
+  random: ${random}
+  random_walk:
+    n_steps: ${geometry.log_length}
+    dt: 1.0
+    accel_sigma_range: [0.5, 2.0]
+    vel_memory: 0.95
+    vmax: 5.0
+
+texture:
+  background_range: [0.25, 0.35] # color of background
+  ring_pick_range: [0.02, 0.09] # color of ring picks
+  ring_std_range: [1.0, 2.0] # std of rings (width)
+  ring_step_variability: 2 # variability of step of rings
+  ring_step_range: [3, 7] # ring step range
+  sigmoid_steepness_range: [100, 200] # stepness of sigmoid for humid part
+  sigmoid_minimum_range: [0.3, 0.4] # controls how much the humid part is white (lower values, more bright)
+  humidity_pos_range: [0.6, 0.8] # controls where humid part starts
+  end_range: [0.2, 0.55] # 1 -> log diameter = image size, if >0.9 there are rendering artifacts
+  first_res: 500 # first size of the texture
+  width: 1504 # last width of the texture
+  height: 56 # 56
+  knot_color_range: [-0.2, -0.4]
+  # knot_color_range: [-0.0, -0.0]
+
+postprocessing:
+  microtec_offset: [20, 30]

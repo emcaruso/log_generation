@@ -12,27 +12,20 @@ import json
 from PIL import Image  # , ImageDraw, ImageOps
 from geometry_generator import GeometryGenerator
 from color_maps import ColorMaps
+from omegaconf import DictConfig
 
 
 class VolumeGenerator:
 
-    def __init__(
-        self,
-        resolution: int = 800,
-        n_slices: int = 100,
-        show: bool = True,
-        random: bool = False,
-    ):
+    def __init__(self, cfg: DictConfig):
 
-        self.show = show
-        self.n_slices = n_slices
-        self.width = self.height = resolution
+        self.cfg = cfg
+        self.width = self.height = self.cfg.rendering.resolution
         self.src_dir = os.path.dirname(os.path.abspath(__file__))
         self.data_dir = os.path.abspath(os.path.join(self.src_dir, "..", "data"))
-        self.random = random
-        self.geometry_generator = GeometryGenerator(random=self.random)
-        self.color_map = ColorMaps()
-        if self.random:
+        self.geometry_generator = GeometryGenerator(cfg=self.cfg.geometry)
+        self.color_map = ColorMaps(self.cfg.texture)
+        if self.cfg.random:
             self.geometry_dir = os.path.join(self.data_dir, "tree_geo_random")
             self.wood_color_map_dir = os.path.join(
                 self.data_dir, "wood_color_maps_random"
@@ -89,16 +82,16 @@ class VolumeGenerator:
 
     def generate_volume(self) -> np.ndarray:
 
-        # # new log geometry
-        self.geometry_generator.generate_geometry()
-
         end = 0.45
-        if self.random:
+        if self.cfg.random:
             image, end = self.color_map.generate_color_map()
             # save color map
             color_map_path = os.path.join(self.wood_color_map_dir, "wood_bar_color.bmp")
             os.makedirs(self.wood_color_map_dir, exist_ok=True)
             image.save(color_map_path)
+
+        # # new log geometry
+        self.geometry_generator.generate_geometry(end)
 
         ### WINDOW SETUP ###########################################################
 
@@ -213,6 +206,13 @@ class VolumeGenerator:
         endLoc = glGetUniformLocation(shader, "end")
         glUniform1f(endLoc, end)
 
+        # knot color
+        knot_color = np.random.uniform(
+            self.cfg.texture.knot_color_range[0], self.cfg.texture.knot_color_range[1]
+        )
+        knotColor = glGetUniformLocation(shader, "knotColor")
+        glUniform1f(knotColor, knot_color)
+
         ### SET SHADER PARAMETERS ##################################################
 
         # Set tree log properties
@@ -241,6 +241,9 @@ class VolumeGenerator:
         rot_x = pyrr.Matrix44.from_x_rotation(0.00)
         rot_z = pyrr.Matrix44.from_z_rotation(0.0)
         view = np.array(rot_x * rot_z)
+        # change position of view
+        view[3][1] += 0.182  # fix offset INVESTIGATE
+
         viewLoc = glGetUniformLocation(shader, "view")
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view)
 
@@ -257,10 +260,14 @@ class VolumeGenerator:
         volume = []
         # volume = np.zeros((self.height, self.width, 1, self.n_slices), dtype=np.uint8)
         # while not glfw.window_should_close(self.window):
-        for time_idx in tqdm(range(0, self.n_slices), desc="Generating volume slices"):
+        n_slices = int(self.cfg.geometry.log_length / self.cfg.geometry.slice_size)
+        for time_idx in tqdm(
+            range(0, n_slices),
+            desc="Generating volume slices",
+        ):
 
             # interpolate time_idx from z to endtime
-            time = time_idx / self.n_slices * endtime
+            time = time_idx / n_slices * endtime
 
             glfw.poll_events()
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -291,7 +298,7 @@ class VolumeGenerator:
             volume.append(img)
             # volume[:, :, 0, time_idx] = img[:, :, 0]
 
-            if self.show:
+            if self.cfg.show:
                 cv2.imshow("Rendered Image", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
                 cv2.waitKey(1)
 
@@ -304,6 +311,17 @@ class VolumeGenerator:
 
         # permute last with first axis
         volume = np.transpose(volume, (3, 0, 1, 2)).squeeze()
+
+        print("Postprocessing for offset")
+        # volume postprocessing
+        offset = np.where(volume > 0)[1].min()
+        microtec_offset = int(
+            np.random.uniform(*self.cfg.postprocessing.microtec_offset)
+        )
+        offset_delta = offset - microtec_offset
+        # slide the volume by offset delta
+        volume = np.roll(volume, -offset_delta, axis=1)
+
         return volume
 
 

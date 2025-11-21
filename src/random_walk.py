@@ -1,29 +1,28 @@
 import numpy as np
 import numpy as np
 import matplotlib.pyplot as plt
+from omegaconf import DictConfig
 
 
 class RandomWalkGenerator:
 
     def __init__(
         self,
-        n_steps,
+        cfg: DictConfig,
         p_min,
         p_max,
         p0,
-        dt: float = 1.0,
-        accel_sigma=0.55,
-        vel_memory=0.95,
-        vmax=2.0,
     ):
-        self.n_steps = n_steps
         self.p0 = p0
         self.p_min = p_min
         self.p_max = p_max
-        self.dt = dt
-        self.accel_sigma = accel_sigma
-        self.vel_memory = vel_memory
-        self.vmax = vmax
+        self.dt = cfg.dt
+        self.n_steps = cfg.n_steps
+        self.accel_sigma = np.random.uniform(
+            cfg.accel_sigma_range[0], cfg.accel_sigma_range[1]
+        )
+        self.vel_memory = cfg.vel_memory
+        self.vmax = cfg.vmax
 
     def get_trajectory(self):
 
