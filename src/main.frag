@@ -402,7 +402,7 @@ void main()
     // COLOR. PAPER Section 4.3
     vec3 texColor = vec3(texture2D(ColorMap, vec2(t,0.5)));
     // vec3 knotColor = vec3(-0.30,-0.30,-0.30); //arbitrary color
-    vec3 knotColor = vec3(knotColor,knotColor,knotColor); //arbitrary color
+    vec3 knotColor = vec3(-knotColor,-knotColor,-knotColor); //arbitrary color
     // vec3 knotColor = vec3(0.20,0.20,0.15); //arbitrary color
     float m = 14;
     float g = 1/pow(clamp(1.2*t_b_min-t_s,0.001,1.0)+1.0,m);

@@ -34,8 +34,7 @@ texture:
   first_res: 500 # first size of the texture
   width: 1504 # last width of the texture
   height: 56 # 56
-  knot_color_range: [-0.2, -0.4]
-  # knot_color_range: [-0.0, -0.0]
+  knot_color_range: [0.2, 0.4] # color range of knots
 
 postprocessing:
   microtec_offset: [20, 30]
